@@ -2,51 +2,100 @@ import os
 import sys
 import streamlit as st
 from openai import OpenAI
-import re  # Importar expresiones regulares
+import re
+import sqlite3 # <<< NUEVO: Para la base de datos
+import datetime # <<< NUEVO: Para la hora del pedido
+import json # <<< NUEVO: Para guardar el historial
 
 # --- 1. CONFIGURACIÓN ---
 DEEPSEEK_BASE_URL = "https://api.deepseek.com/v1"
 DEFAULT_MODEL = "deepseek-chat"
 
-# --- Función para cargar el menú ---
+# --- <<< NUEVO: LÓGICA DE BASE DE DATOS (BD) >>> ---
+
+def init_db(db_file="pedidos.db"):
+    """Crea la base de datos y la tabla si no existen."""
+    conn = sqlite3.connect(db_file)
+    cursor = conn.cursor()
+    # Crear tabla
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS ordenes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        timestamp TEXT NOT NULL,
+        historial_chat TEXT NOT NULL,
+        estado TEXT NOT NULL
+    );
+    """)
+    conn.commit()
+    conn.close()
+
+def registrar_pedido_en_db(historial_chat):
+    """Guarda el historial de chat como un nuevo pedido en la BD."""
+    try:
+        conn = sqlite3.connect("pedidos.db")
+        cursor = conn.cursor()
+        
+        # Convertir el historial (lista de dicts) a un string JSON
+        historial_json = json.dumps(historial_chat, indent=2)
+        
+        # Insertar la orden
+        cursor.execute("""
+        INSERT INTO ordenes (timestamp, historial_chat, estado)
+        VALUES (?, ?, ?)
+        """, (str(datetime.datetime.now()), historial_json, "PENDIENTE"))
+        
+        conn.commit()
+        conn.close()
+        return True
+    except Exception as e:
+        st.error(f"Error al registrar el pedido en la BD: {e}")
+        return False
+# --- <<< FIN LÓGICA DE BD >>> ---
+
+
+# --- <<< ACTUALIZADO: Cargar Menú (ahora crea un Diccionario) >>> ---
 @st.cache_data
 def cargar_menu(ruta_archivo="menu.txt"):
+    """
+    Lee el menú y crea un diccionario para mapear imágenes a nombres de platos.
+    """
     try:
         with open(ruta_archivo, "r", encoding="utf-8") as f:
-            return f.read()
+            menu_texto_completo = f.read()
+        
+        menu_dict = {}
+        # Expresión regular para encontrar: "Nombre del Plato: $Precio [ruta/imagen.png]"
+        # O "Nombre del Plato: $Precio [sin_imagen]"
+        pattern = re.compile(r"^(.*?):.*\$(\d+).*?\[(imagenes/.*?\.png)\].*$", re.MULTILINE)
+        
+        for match in pattern.finditer(menu_texto_completo):
+            nombre_plato = match.group(1).strip()
+            ruta_imagen = match.group(3).strip()
+            if ruta_imagen != "sin_imagen":
+                menu_dict[ruta_imagen] = nombre_plato
+                
+        return menu_texto_completo, menu_dict
     except FileNotFoundError:
         st.error(f"Error: No se encontró el archivo {ruta_archivo}. Asegúrate de que exista.")
-        return None
+        return None, None
 
-# --- <<< CORREGIDO >>> ---
-# Cargar el menú y crear el prompt final (una sola vez)
-MENU_TEXTO = cargar_menu()
+# Cargar el menú y crear el prompt final
+MENU_TEXTO, MENU_DICT = cargar_menu()
+
 if MENU_TEXTO:
     DEFAULT_SYSTEM_PROMPT = """
 Eres "ChatMesero", un asistente virtual para el restaurante "La Esquina".
 Tu única misión es tomar la orden del cliente.
 
 **REGLAS DE ORO (INQUEBRABLES):**
-
 1.  **ROL ESTRICTO:** Solo eres un mesero. Si el cliente te pregunta por cualquier otra cosa (clima, deportes, etc.), debes responder: "Disculpe, solo puedo ayudarle a tomar su orden."
-2.  **NO INVENTES:** No puedes alucinar. Tu conocimiento se limita **ABSOLUTAMENTE** al menú de abajo.
+2.  **NO INVENTES:** Tu conocimiento se limita **ABSOLUTAMENTE** al menú de abajo.
 3.  **REGLA DE FORMATO (¡LA MÁS IMPORTANTE!):**
     - Al mostrar el menú, DEBES copiar el texto, el precio y la etiqueta de imagen **EXACTAMENTE** como aparecen en el menú.
     - **EJEMPLO CORRECTO:** "Agua sin gas: $1 [imagenes/agua.png]"
-    - **EJEMPLO INCORRECTO (PROHIBIDO):** "2.Aguasingas -1"
-    - **NUNCA** alteres el precio. **NUNCA** alteres el nombre del plato.
-
 4.  **REGLA DE GALERÍA HORIZONTAL:**
-    - Cuando el usuario pida "Ver Menú Completo" o "Ver Promociones", tu respuesta DEBE empezar con **TODAS** las etiquetas de imagen relevantes juntas, en una sola línea.
-    - **EJEMPLO DE RESPUESTA DE GALERÍA:**
-      "¡Claro! Aquí están nuestros platos principales:
-      [imagenes/burger.png] [imagenes/pizza.png] [imagenes/ensalada.png] [imagenes/lomo.png]
-
-      === PLATOS FUERTES ===
-      Promo Burger (Hamburguesa + Papas + Gaseosa): $10 [imagenes/burger.png]
-      Pizza Margarita: $12 [imagenes/pizza.png]
-      ..."
-    - Esta regla es vital para que el código de la galería funcione.
+    - Cuando el usuario pida "Ver Menú Completo", tu respuesta DEBE empezar con **TODAS** las etiquetas de imagen de los platos principales juntas, en una sola línea.
+    - **EJEMPLO:** "[imagenes/burger.png] [imagenes/pizza.png] [imagenes/ensalada.png] [imagenes/lomo.png]"
 
 ---
 **MENÚ DISPONIBLE HOY (Productos a la Venta):**
@@ -58,7 +107,7 @@ Comienza la interacción.
 """.format(menu_inyectado=MENU_TEXTO)
 else:
     DEFAULT_SYSTEM_PROMPT = "Error: No se pudo cargar el menú."
-# --- <<< FIN DE SECCIÓN CORREGIDA >>> ---
+# --- <<< FIN DE SECCIÓN ACTUALIZADA >>> ---
 
 
 # --- 2. CLASE DEL CHATBOT (Sin cambios) ---
@@ -95,10 +144,8 @@ class DeepSeekChatbot:
 
 # --- 3. LA APLICACIÓN WEB ---
 
-# --- <<< CORREGIDO >>> ---
-# Solo hay UNA definición de main_app()
 def main_app():
-    # Código para cargar CSS y layout="wide" movido aquí
+    # Código para cargar CSS y layout="wide"
     st.set_page_config(page_title="ChatMesero", page_icon="🍔", layout="wide")
 
     # Cargar CSS personalizado (Asegúrate de que 'style.css' exista)
@@ -111,13 +158,17 @@ def main_app():
         st.warning("No se encontró el archivo 'style.css'. Se usarán los estilos por defecto.")
 
     st.title("🍔 ChatBot del Restaurante")
+    
+    # <<< NUEVO: Inicializar la BD al arrancar >>>
+    init_db()
 
     api_key = os.environ.get("DEEPSEEK_API_KEY") # O usa st.secrets si lo despliegas
     if not api_key:
         st.error("Error: Falta la API Key de DeepSeek.")
         st.stop()
         
-    if not MENU_TEXTO:
+    if not MENU_TEXTO or not MENU_DICT:
+        st.error("Error fatal: No se pudo cargar el menú o el diccionario de imágenes.")
         st.stop()
 
     if "chatbot" not in st.session_state:
@@ -127,8 +178,53 @@ def main_app():
             system_prompt=DEFAULT_SYSTEM_PROMPT,
             base_url=DEEPSEEK_BASE_URL
         )
+    
+    # --- <<< NUEVO: BARRA LATERAL (SIDEBAR) CON ACCIONES >>> ---
+    st.sidebar.title("Opciones de Pedido")
 
-    # --- <<< CORREGIDO: LÓGICA DE GALERÍA HORIZONTAL >>> ---
+    if st.sidebar.button("Limpiar Chat 🧹"):
+        st.session_state.chatbot = DeepSeekChatbot(
+            api_key=api_key,
+            model=DEFAULT_MODEL,
+            system_prompt=DEFAULT_SYSTEM_PROMPT,
+            base_url=DEEPSEEK_BASE_URL
+        )
+        st.success("Chat reiniciado.")
+        st.rerun()
+
+    if st.sidebar.button("Eliminar último mensaje ❌"):
+        if len(st.session_state.chatbot.history) > 2: # No borrar el prompt del sistema
+            st.session_state.chatbot.history.pop() # Borra respuesta de IA
+            st.session_state.chatbot.history.pop() # Borra pregunta de Usuario
+            st.success("Última interacción eliminada.")
+            st.rerun()
+        else:
+            st.sidebar.warning("No hay nada que eliminar.")
+
+    if st.sidebar.button("Confirmar y Enviar Pedido ✅"):
+        # Extraer solo la conversación (sin el system prompt)
+        orden_chat = [msg for msg in st.session_state.chatbot.history if msg["role"] != "system"]
+        
+        if len(orden_chat) == 0:
+            st.sidebar.error("No hay ningún pedido que confirmar.")
+        else:
+            if registrar_pedido_en_db(orden_chat):
+                st.sidebar.success("¡Pedido enviado a la cocina! 🧑‍🍳")
+                st.balloons()
+                # Opcional: limpiar el chat después de confirmar
+                st.session_state.chatbot = DeepSeekChatbot(
+                    api_key=api_key,
+                    model=DEFAULT_MODEL,
+                    system_prompt=DEFAULT_SYSTEM_PROMPT,
+                    base_url=DEEPSEEK_BASE_URL
+                )
+                st.rerun()
+            else:
+                st.sidebar.error("Hubo un problema al enviar tu pedido.")
+    # --- <<< FIN BARRA LATERAL >>> ---
+
+
+    # --- <<< ACTUALIZADO: LÓGICA DE GALERÍA HORIZONTAL CON BOTONES >>> ---
     for message in st.session_state.chatbot.history:
         if message["role"] == "system": continue
         
@@ -154,37 +250,39 @@ def main_app():
             if text_buffer:
                 st.markdown("".join(text_buffer).replace("\n", "  \n"))
             
-            # Mostrar las imágenes en una galería horizontal
+            # Mostrar las imágenes en una galería horizontal (4 columnas)
             if image_buffer:
-                num_imagenes = len(image_buffer)
-                # Crea columnas, una por cada imagen (limitado para no saturar)
-                cols = st.columns(num_imagenes if num_imagenes < 6 else 6) 
+                # Usamos 4 columnas para un grid uniforme
+                cols = st.columns(4)
                 
                 idx = 0
                 for img_path in image_buffer:
                     with cols[idx]:
-                        st.image(img_path, use_column_width=True, caption=img_path.split('/')[-1].split('.')[0].capitalize())
-                    idx = (idx + 1) % len(cols)
+                        st.image(img_path, use_column_width=True) # <<< TAMAÑO UNIFORME
+                        
+                        # <<< NUEVO: LÓGICA DE BOTÓN CLICABLE >>>
+                        item_name = MENU_DICT.get(img_path, "este item")
+                        
+                        # Usamos la ruta de la imagen como 'key' única para el botón
+                        if st.button(f"Pedir {item_name}", key=f"btn_{img_path}_{message['content'][:10]}"):
+                            st.session_state.prompt_a_enviar = f"Quiero pedir una {item_name}"
+                            st.rerun() # Dispara el envío
+                            
+                    idx = (idx + 1) % 4 # Pasa a la siguiente columna (0, 1, 2, 3, 0, ...)
 
     # --- Opciones Predeterminadas (Botones) ---
     if "prompt_a_enviar" not in st.session_state:
         st.session_state.prompt_a_enviar = None
 
-    col1, col2, col3 = st.columns(3)
-    if col1.button("Ver Menú Completo 📄"):
+    # Mover los botones a la barra lateral para más limpieza
+    st.sidebar.divider()
+    st.sidebar.markdown("### Opciones Rápidas")
+    if st.sidebar.button("Ver Menú Completo 📄"):
         st.session_state.prompt_a_enviar = "Muéstrame el menú completo"
         
-    if col2.button("Ver Promociones 🔥"):
+    if st.sidebar.button("Ver Promociones 🔥"):
         st.session_state.prompt_a_enviar = "Qué promociones tienes hoy? (Asegúrate de mostrarme las fotos)"
         
-    if col3.button("Limpiar Chat 🧹"):
-        st.session_state.chatbot = DeepSeekChatbot(
-            api_key=api_key,
-            model=DEFAULT_MODEL,
-            system_prompt=DEFAULT_SYSTEM_PROMPT,
-            base_url=DEEPSEEK_BASE_URL
-        )
-        st.rerun()
 
     # --- Entrada de chat ---
     prompt_usuario = st.chat_input("Escribe tu pedido o pregunta...")
@@ -210,7 +308,5 @@ def main_app():
         
         st.rerun()
 
-# --- <<< CORREGIDO >>> ---
-# Solo hay UN bloque "if __name__ == '__main__':" al final
 if __name__ == "__main__":
     main_app()
