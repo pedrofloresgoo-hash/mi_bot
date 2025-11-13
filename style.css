@@ -3,55 +3,110 @@
 /* Fuente personalizada para toda la app */
 @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap');
 html, body, [class*="st-"] {
-    font-family: 'Montserrat', sans-serif;
+/* style.css - Tema "Hamburguesería Dark" */
+
+/* 1. Fuentes (Letras Bonitas) */
+@import url('https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Roboto:wght@400;700&display=swap');
+
+/* Fuente base para toda la app (chat, botones, etc.) */
+html, body, [class*="st-"], .stChatInput input {
+    font-family: 'Roboto', sans-serif;
+    font-size: 16px;
+    color: #F5F5F5; /* Texto principal (casi blanco) */
 }
 
-/* Título principal */
+/* 2. Colores de Fondo (Dark Theme) */
+/* Fondo principal de la app (el contenedor central) */
+.main .block-container {
+     background-color: #2A2A2A; 
+}
+
+/* Fondo exterior (donde no hay app) */
+body {
+    background-color: #1E1E1E;
+}
+
+/* 3. Títulos (Estilo "Menú de Hamburguesas") */
 h1 {
-    color: #FF5733; /* Naranja rojizo */
+    font-family: 'Oswald', sans-serif;
+    color: #FF4B3A; /* Color acento (rojo tomate) */
     text-align: center;
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
-    font-size: 3em; /* Más grande */
-    font-weight: 700;
+    text-transform: uppercase; /* ESTILO MENÚ */
+    font-size: 2.8rem;
+    padding-bottom: 10px;
+    border-bottom: 3px solid #FF4B3A;
 }
 
-/* Subtítulos de sección (como "PLATOS FUERTES", "BEBIDAS") */
+/* Subtítulos (como "=== PLATOS FUERTES ===") */
 h3 {
-    color: #3366FF; /* Azul */
-    border-bottom: 2px solid #3366FF;
-    padding-bottom: 5px;
-    margin-top: 2em;
-    font-weight: 700;
+    font-family: 'Oswald', sans-serif;
+    color: #F5F5F5;
+    font-size: 1.8rem;
+    margin-top: 1.5em;
 }
 
-/* Mensajes del chatbot (para que el texto del mesero sea distinto) */
+/* 4. Chat (Burbujas) */
 .stChatMessage {
-    border-radius: 15px;
-    padding: 10px 15px;
-    margin-bottom: 10px;
+    border-radius: 12px;
+    padding: 1em;
+    margin-bottom: 1em;
+    border: 1px solid transparent;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
 }
 
-.stChatMessage.st-chat-message-container-user {
-    background-color: #E0FFD0; /* Verde claro para el usuario */
-    text-align: right;
-}
-
+/* Burbuja del Asistente (Mesero) */
 .stChatMessage.st-chat-message-container-assistant {
-    background-color: #D0E0FF; /* Azul claro para el asistente */
+    background-color: #3A3A3A;
+    border-left: 5px solid #FF4B3A; /* Acento del mesero */
 }
 
-/* Estilo del botón */
+/* Burbuja del Usuario */
+.stChatMessage.st-chat-message-container-user {
+    background-color: #454545;
+    text-align: right; /* Alinea el texto a la derecha */
+}
+
+/* 5. Botones (Opciones Predeterminadas) */
 .stButton > button {
-    background-color: #4CAF50; /* Verde */
-    color: white;
-    padding: 10px 20px;
+    background-color: #FF4B3A; /* Color acento */
+    color: #FFFFFF;
+    font-family: 'Oswald', sans-serif;
+    font-weight: 500;
+    font-size: 1.1rem;
+    text-transform: uppercase;
     border: none;
     border-radius: 8px;
-    font-size: 1.1em;
-    cursor: pointer;
-    transition: background-color 0.3s ease;
+    padding: 12px 24px;
+    width: 100%; /* Ocupa todo el ancho de la columna */
+    transition: all 0.3s ease;
 }
 
 .stButton > button:hover {
-    background-color: #45a049;
+    background-color: #F5F5F5; /* Blanco al pasar el ratón */
+    color: #FF4B3A;
+    transform: scale(1.02);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+.stButton > button:active {
+    transform: scale(0.98);
+}
+
+/* 6. Responsivo (Para todo tipo de dispositivos) */
+@media (max-width: 600px) {
+    html, body, [class*="st-"], .stChatInput input {
+        font-size: 14px; /* Letra un poco más pequeña en móviles */
+    }
+    
+    h1 {
+        font-size: 2.2rem; /* Título más pequeño */
+    }
+
+    .stChatMessage {
+        padding: 0.8em;
+    }
+    
+    .stButton > button {
+         padding: 10px 15px;
+    }
 }
