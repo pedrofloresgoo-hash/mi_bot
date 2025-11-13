@@ -86,13 +86,20 @@ h3 {
     color: #FFFFFF;
     font-family: 'Oswald', sans-serif;
     font-weight: 500;
-    font-size: 0.9rem; /* Un poco más pequeños */
+    font-size: 0.9rem;
     text-transform: uppercase;
     border: none;
     border-radius: 8px;
-    padding: 8px 12px;
+    padding: 10px; /* Un poco más de padding vertical */
     width: 100%;
     transition: all 0.3s ease;
+
+    /* <<< NUEVO: Manejo de texto largo >>> */
+    white-space: normal; /* Permite que el texto se parta */
+    word-wrap: break-word; /* Rompe la palabra si es necesario */
+    text-align: center; /* Centra el texto de varias líneas */
+    line-height: 1.2; /* Espacio entre líneas */
+    min-height: 50px; /* Altura mínima para alinear botones */
 }
 
 .stButton:not([data-testid="stSidebar"] *) > button:hover {
@@ -100,7 +107,6 @@ h3 {
     color: #FF4B3A;
     transform: scale(1.03);
 }
-
 
 /* 6. ESTILOS DEL CHAT INPUT ("KEYBOARD") */
 

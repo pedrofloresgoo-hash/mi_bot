@@ -66,7 +66,7 @@ def cargar_menu(ruta_archivo="menu.txt"):
         menu_dict = {}
         # Expresión regular para encontrar: "Nombre del Plato: $Precio [ruta/imagen.png]"
         # O "Nombre del Plato: $Precio [sin_imagen]"
-        pattern = re.compile(r"^(.*?):.*\$(\d+).*?\[(imagenes/.*?\.png)\].*$", re.MULTILINE)
+        pattern = re.compile(r"^(.*?)(?:\s\(.*\))?:.*\$(\d+).*?\[(imagenes/.*?\.png)\].*$", re.MULTILINE)
         
         for match in pattern.finditer(menu_texto_completo):
             nombre_plato = match.group(1).strip()
@@ -192,7 +192,7 @@ def main_app():
         st.success("Chat reiniciado.")
         st.rerun()
 
-    if st.sidebar.button("Eliminar último mensaje ❌"):
+    if st.sidebar.button("Eliminar último"):
         if len(st.session_state.chatbot.history) > 2: # No borrar el prompt del sistema
             st.session_state.chatbot.history.pop() # Borra respuesta de IA
             st.session_state.chatbot.history.pop() # Borra pregunta de Usuario
@@ -201,7 +201,7 @@ def main_app():
         else:
             st.sidebar.warning("No hay nada que eliminar.")
 
-    if st.sidebar.button("Confirmar y Enviar Pedido ✅"):
+    if st.sidebar.button("Enviar Pedido ✅"):
         # Extraer solo la conversación (sin el system prompt)
         orden_chat = [msg for msg in st.session_state.chatbot.history if msg["role"] != "system"]
         
