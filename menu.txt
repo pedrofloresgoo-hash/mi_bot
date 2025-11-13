@@ -5,9 +5,9 @@ Ensalada César con Pollo: $8 [imagenes/ensalada.png]
 Plato del Día: Lomo Saltado: $11 [imagenes/lomo.png]
 
 === BEBIDAS ===
-Gaseosa (Coca-Cola, Sprite): $2 [sin_imagen]
-Agua sin gas: $1 [sin_imagen]
-Jugo de Naranja Natural: $3 [sin_imagen]
+Gaseosa (Coca-Cola, Sprite): $2 [imagenes/gaseosa.png]
+Agua sin gas: $1 [imagenes/agua.png]
+Jugo de Naranja Natural: $3 [imagenes/jugo.png]
 
 === POSTRES ===
-Torta de Chocolate: $4 [sin_imagen]
+Torta de Chocolate: $4 [imagenes/torta.png]
