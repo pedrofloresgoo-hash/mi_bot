@@ -1,0 +1,57 @@
+/* style.css */
+
+/* Fuente personalizada para toda la app */
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap');
+html, body, [class*="st-"] {
+    font-family: 'Montserrat', sans-serif;
+}
+
+/* Título principal */
+h1 {
+    color: #FF5733; /* Naranja rojizo */
+    text-align: center;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+    font-size: 3em; /* Más grande */
+    font-weight: 700;
+}
+
+/* Subtítulos de sección (como "PLATOS FUERTES", "BEBIDAS") */
+h3 {
+    color: #3366FF; /* Azul */
+    border-bottom: 2px solid #3366FF;
+    padding-bottom: 5px;
+    margin-top: 2em;
+    font-weight: 700;
+}
+
+/* Mensajes del chatbot (para que el texto del mesero sea distinto) */
+.stChatMessage {
+    border-radius: 15px;
+    padding: 10px 15px;
+    margin-bottom: 10px;
+}
+
+.stChatMessage.st-chat-message-container-user {
+    background-color: #E0FFD0; /* Verde claro para el usuario */
+    text-align: right;
+}
+
+.stChatMessage.st-chat-message-container-assistant {
+    background-color: #D0E0FF; /* Azul claro para el asistente */
+}
+
+/* Estilo del botón */
+.stButton > button {
+    background-color: #4CAF50; /* Verde */
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 8px;
+    font-size: 1.1em;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.stButton > button:hover {
+    background-color: #45a049;
+}

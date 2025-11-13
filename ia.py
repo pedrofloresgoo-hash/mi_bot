@@ -2,7 +2,7 @@ import os
 import sys
 import streamlit as st
 from openai import OpenAI
-import re  # <<< --- ¡NUEVO! Importar expresiones regulares
+import re  # Importar expresiones regulares
 
 # --- 1. CONFIGURACIÓN ---
 DEEPSEEK_BASE_URL = "https://api.deepseek.com/v1"
@@ -18,21 +18,35 @@ def cargar_menu(ruta_archivo="menu.txt"):
         st.error(f"Error: No se encontró el archivo {ruta_archivo}. Asegúrate de que exista.")
         return None
 
-# Cargar el menú y crear el prompt final
+# --- <<< CORREGIDO >>> ---
+# Cargar el menú y crear el prompt final (una sola vez)
 MENU_TEXTO = cargar_menu()
 if MENU_TEXTO:
     DEFAULT_SYSTEM_PROMPT = """
-Eres "ChatMesero", un asistente virtual para tomar pedidos en el restaurante "La Esquina".
+Eres "ChatMesero", un asistente virtual para el restaurante "La Esquina".
 Tu única misión es tomar la orden del cliente.
 
-**REGLAS ESTRICTAS:**
-1.  **Rol Único:** Solo eres un mesero. No puedes hablar de nada que no sea la comida y bebida del restaurante.
-2.  **Rechazo Amable:** Si el cliente te saca de tema, debes responder: "Disculpe, solo puedo ayudarle a tomar su orden. ¿Qué le gustaría pedir del menú?"
-3.  **Proactivo:** Sugiere el "Plato del Día" o la "Promo Burger".
-4.  **Basado en el Menú:** Solo puedes vender lo que está en la lista de abajo.
+**REGLAS DE ORO (INQUEBRABLES):**
 
-5.  **<<< ¡NUEVA REGLA DE IMÁGENES! >>>**
-    Cuando describas un plato que tiene una imagen en el menú (ej. [imagenes/burger.png]), **DEBES** incluir esa etiqueta de imagen exacta en tu respuesta. El sistema la mostrará automáticamente. No incluyas la etiqueta [sin_imagen].
+1.  **ROL ESTRICTO:** Solo eres un mesero. Si el cliente te pregunta por cualquier otra cosa (clima, deportes, etc.), debes responder: "Disculpe, solo puedo ayudarle a tomar su orden."
+2.  **NO INVENTES:** No puedes alucinar. Tu conocimiento se limita **ABSOLUTAMENTE** al menú de abajo.
+3.  **REGLA DE FORMATO (¡LA MÁS IMPORTANTE!):**
+    - Al mostrar el menú, DEBES copiar el texto, el precio y la etiqueta de imagen **EXACTAMENTE** como aparecen en el menú.
+    - **EJEMPLO CORRECTO:** "Agua sin gas: $1 [imagenes/agua.png]"
+    - **EJEMPLO INCORRECTO (PROHIBIDO):** "2.Aguasingas -1"
+    - **NUNCA** alteres el precio. **NUNCA** alteres el nombre del plato.
+
+4.  **REGLA DE GALERÍA HORIZONTAL:**
+    - Cuando el usuario pida "Ver Menú Completo" o "Ver Promociones", tu respuesta DEBE empezar con **TODAS** las etiquetas de imagen relevantes juntas, en una sola línea.
+    - **EJEMPLO DE RESPUESTA DE GALERÍA:**
+      "¡Claro! Aquí están nuestros platos principales:
+      [imagenes/burger.png] [imagenes/pizza.png] [imagenes/ensalada.png] [imagenes/lomo.png]
+
+      === PLATOS FUERTES ===
+      Promo Burger (Hamburguesa + Papas + Gaseosa): $10 [imagenes/burger.png]
+      Pizza Margarita: $12 [imagenes/pizza.png]
+      ..."
+    - Esta regla es vital para que el código de la galería funcione.
 
 ---
 **MENÚ DISPONIBLE HOY (Productos a la Venta):**
@@ -44,6 +58,7 @@ Comienza la interacción.
 """.format(menu_inyectado=MENU_TEXTO)
 else:
     DEFAULT_SYSTEM_PROMPT = "Error: No se pudo cargar el menú."
+# --- <<< FIN DE SECCIÓN CORREGIDA >>> ---
 
 
 # --- 2. CLASE DEL CHATBOT (Sin cambios) ---
@@ -80,8 +95,21 @@ class DeepSeekChatbot:
 
 # --- 3. LA APLICACIÓN WEB ---
 
+# --- <<< CORREGIDO >>> ---
+# Solo hay UNA definición de main_app()
 def main_app():
-    st.set_page_config(page_title="ChatMesero", page_icon="🍔")
+    # Código para cargar CSS y layout="wide" movido aquí
+    st.set_page_config(page_title="ChatMesero", page_icon="🍔", layout="wide")
+
+    # Cargar CSS personalizado (Asegúrate de que 'style.css' exista)
+    try:
+        st.markdown(
+            f'<style>{open("style.css").read()}</style>',
+            unsafe_allow_html=True
+        )
+    except FileNotFoundError:
+        st.warning("No se encontró el archivo 'style.css'. Se usarán los estilos por defecto.")
+
     st.title("🍔 ChatBot del Restaurante")
 
     api_key = os.environ.get("DEEPSEEK_API_KEY") # O usa st.secrets si lo despliegas
@@ -100,31 +128,43 @@ def main_app():
             base_url=DEEPSEEK_BASE_URL
         )
 
-    # --- <<< ¡CAMBIO IMPORTANTE! LÓGICA PARA MOSTRAR HISTORIAL CON IMÁGENES >>> ---
+    # --- <<< CORREGIDO: LÓGICA DE GALERÍA HORIZONTAL >>> ---
     for message in st.session_state.chatbot.history:
         if message["role"] == "system": continue
         
         with st.chat_message(message["role"]):
-            # Divide el mensaje por las etiquetas de imagen (ej. [imagenes/burger.png])
             partes = re.split(r'(\[imagenes/.*?\])', message["content"])
             
-            for parte in partes:
-                # Si la parte es una etiqueta de imagen válida...
-                if re.match(r'^\[imagenes/.*\]$', parte):
-                    ruta_imagen = parte.strip("[]") # Quita los corchetes
-                    
-                    # Verifica si el archivo de imagen existe antes de mostrarlo
-                    if os.path.exists(ruta_imagen):
-                        st.image(ruta_imagen, width=300)
-                    else:
-                        st.error(f"(Error: No se encontró la imagen en {ruta_imagen})")
-                elif parte == "[sin_imagen]":
-                    pass # Ignora esta etiqueta
-                else:
-                    # Muestra el texto normal
-                    st.markdown(parte.replace("\n", "  \n"))
-    # --- <<< FIN DEL CAMBIO >>> ---
+            text_buffer = [] # Para acumular texto
+            image_buffer = [] # Para acumular imágenes para la galería
 
+            for parte in partes:
+                if re.match(r'^\[imagenes/.*\]$', parte):
+                    ruta_imagen = parte.strip("[]")
+                    if os.path.exists(ruta_imagen):
+                        image_buffer.append(ruta_imagen)
+                    else:
+                        text_buffer.append(f"(Error: No se encontró la imagen en {ruta_imagen})")
+                elif parte == "[sin_imagen]":
+                    pass
+                else:
+                    text_buffer.append(parte)
+            
+            # Mostrar todo el texto acumulado
+            if text_buffer:
+                st.markdown("".join(text_buffer).replace("\n", "  \n"))
+            
+            # Mostrar las imágenes en una galería horizontal
+            if image_buffer:
+                num_imagenes = len(image_buffer)
+                # Crea columnas, una por cada imagen (limitado para no saturar)
+                cols = st.columns(num_imagenes if num_imagenes < 6 else 6) 
+                
+                idx = 0
+                for img_path in image_buffer:
+                    with cols[idx]:
+                        st.image(img_path, use_column_width=True, caption=img_path.split('/')[-1].split('.')[0].capitalize())
+                    idx = (idx + 1) % len(cols)
 
     # --- Opciones Predeterminadas (Botones) ---
     if "prompt_a_enviar" not in st.session_state:
@@ -161,16 +201,16 @@ def main_app():
             st.markdown(prompt_final)
 
         with st.chat_message("assistant"):
-            # Usamos st.empty() para un efecto visual más limpio
             placeholder = st.empty()
             respuesta_completa = ""
             for chunk in st.session_state.chatbot.send_message_stream(prompt_final):
                 respuesta_completa += chunk
-                placeholder.markdown(respuesta_completa + "▌") # Muestra el cursor
-            placeholder.empty() # Limpia el placeholder
+                placeholder.markdown(respuesta_completa + "▌")
+            placeholder.empty()
         
-        # Refresca la app para que la lógica de renderizado de imágenes se ejecute
         st.rerun()
 
+# --- <<< CORREGIDO >>> ---
+# Solo hay UN bloque "if __name__ == '__main__':" al final
 if __name__ == "__main__":
     main_app()
