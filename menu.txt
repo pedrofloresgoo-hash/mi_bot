@@ -1,0 +1,13 @@
+=== PLATOS FUERTES ===
+Promo Burger (Hamburguesa + Papas + Gaseosa): $10 [imagenes/burger.png]
+Pizza Margarita: $12 [imagenes/pizza.png]
+Ensalada César con Pollo: $8 [imagenes/ensalada.png]
+Plato del Día: Lomo Saltado: $11 [imagenes/lomo.png]
+
+=== BEBIDAS ===
+Gaseosa (Coca-Cola, Sprite): $2 [sin_imagen]
+Agua sin gas: $1 [sin_imagen]
+Jugo de Naranja Natural: $3 [sin_imagen]
+
+=== POSTRES ===
+Torta de Chocolate: $4 [sin_imagen]
