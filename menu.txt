@@ -6,7 +6,7 @@ Plato del Día: Lomo Saltado: $11 [imagenes/lomo.png]
 
 === BEBIDAS ===
 Gaseosa (Coca-Cola, Sprite): $2 [imagenes/gaseosa.png]
-Agua sin gas: $1 [imagenes/agua.png]
+Agua sin gas: $1 [imagenes/ensalada.png]
 Jugo de Naranja Natural: $3 [imagenes/jugo.png]
 
 === POSTRES ===
