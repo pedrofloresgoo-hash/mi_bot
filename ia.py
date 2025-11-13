@@ -224,15 +224,17 @@ def main_app():
     # --- <<< FIN BARRA LATERAL >>> ---
 
 
-    # --- <<< ACTUALIZADO: LÓGICA DE GALERÍA HORIZONTAL CON BOTONES >>> ---
-    for message in st.session_state.chatbot.history:
+  # --- <<< ACTUALIZADO: LÓGICA DE GALERÍA HORIZONTAL (A PRUEBA DE DUPLICADOS) >>> ---
+    
+    # 'i' es el índice del MENSAJE en el historial
+    for i, message in enumerate(st.session_state.chatbot.history):
         if message["role"] == "system": continue
         
         with st.chat_message(message["role"]):
             partes = re.split(r'(\[imagenes/.*?\])', message["content"])
             
-            text_buffer = [] # Para acumular texto
-            image_buffer = [] # Para acumular imágenes para la galería
+            text_buffer = [] 
+            image_buffer = [] 
 
             for parte in partes:
                 if re.match(r'^\[imagenes/.*\]$', parte):
@@ -252,23 +254,29 @@ def main_app():
             
             # Mostrar las imágenes en una galería horizontal (4 columnas)
             if image_buffer:
-                # Usamos 4 columnas para un grid uniforme
                 cols = st.columns(4)
                 
-                idx = 0
-                for img_path in image_buffer:
-                    with cols[idx]:
-                        st.image(img_path, use_column_width=True) # <<< TAMAÑO UNIFORME
+                # 'col_idx' es para saber en qué columna poner la imagen (0, 1, 2, 3)
+                col_idx = 0 
+                
+                # 'img_idx' es el índice de la IMAGEN DENTRO de este mensaje
+                for img_idx, img_path in enumerate(image_buffer):
+                    with cols[col_idx]:
+                        st.image(img_path, use_column_width=True)
                         
-                        # <<< NUEVO: LÓGICA DE BOTÓN CLICABLE >>>
                         item_name = MENU_DICT.get(img_path, "este item")
                         
-                        # Usamos la ruta de la imagen como 'key' única para el botón
-                        if st.button(f"Pedir {item_name}", key=f"btn_{img_path}_{message['content'][:10]}"):
+                        # --- <<< LA NUEVA CLAVE ÚNICA >>> ---
+                        # Esta clave combina el índice del MENSAJE (i) y el índice
+                        # de la IMAGEN (img_idx) para ser 100% única.
+                        nueva_clave = f"btn_{i}_{img_idx}_{img_path}"
+                        
+                        if st.button(f"Pedir {item_name}", key=nueva_clave):
                             st.session_state.prompt_a_enviar = f"Quiero pedir una {item_name}"
-                            st.rerun() # Dispara el envío
+                            st.rerun()
                             
-                    idx = (idx + 1) % 4 # Pasa a la siguiente columna (0, 1, 2, 3, 0, ...)
+                    # Pasa a la siguiente columna
+                    col_idx = (col_idx + 1) % 4# Pasa a la siguiente columna (0, 1, 2, 3, 0, ...)
 
     # --- Opciones Predeterminadas (Botones) ---
     if "prompt_a_enviar" not in st.session_state:
